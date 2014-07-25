@@ -1,0 +1,20 @@
+NAME
+	diagonalize - diagonalize a matrix
+
+SYNOPSIS
+	diagonalize [MATRIX_A] <MATRIX_B> [EIGENVALUES] [EIGENVECTORS]
+
+DESCRIPTION
+	Takes the file(s) containing the operator(s) of an eigenvalue
+	problem of the form Ax = lBx and solves for x and l which get
+	output to their respective files.
+
+	Input file should be of the form:
+	-------------------------- input ----------------------------
+	#Comments following #'s
+	#Numbers seperated by tabs or spaces without commas
+	#M	N	ELEMENT[M,N]
+	0	0	3.14159e00
+	0	1	2.71828e00
+	1	0	2.99792e08
+	-------------------------------------------------------------
