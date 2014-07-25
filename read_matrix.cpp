@@ -5,7 +5,7 @@
 
 #include "read_matrix.h"
 
-int read_matrix(std::string filename, Mat matrix_handle)
+int read_matrix(std::string filename, Mat& matrix_handle)
 {
 	//File Handle
 	std::ifstream infile;
@@ -20,22 +20,19 @@ int read_matrix(std::string filename, Mat matrix_handle)
 		return 65; //PETSc error code 65 is "couldn't open file"
 	}
 
-	//The number of matrix elements we have
-	unsigned int n_elements = 0;
-
 	//The current line
 	char current_line[256];
 	
-	//Initialize three arrays, our indices and elements
-	long long int 	max_M;
-	long long int 	max_N;
+	//Hold the greatest indices
+	long long int 	max_M = 0;
+	long long int 	max_N = 0;
 
-	//Figure out the size of the matrix to initialize
+	//Fetch the first line
+	infile.getline(current_line, 256);
+
+	//Keep going until we run out of file
 	while(infile.good())
 	{
-		//Fetch a line
-		infile.getline(current_line, 256);
-
 		//If it isn't a comment
 		if(current_line[0] != '#')
 		{
@@ -60,26 +57,34 @@ int read_matrix(std::string filename, Mat matrix_handle)
 			//Compare
 			if(temp > max_N)
 				max_N = temp;
+
 		}
+		//Fetch another line
+		infile.getline(current_line, 256);
 	}
 
 	//Hold PETSc/SLEPc errors
 	PetscErrorCode ierr;
 
+	//Debugging...
+	//std::cout << "Max_M: " << max_M << "	Max_N: " << max_N << std::endl;
+
 	//Initialize our SLEPc matrix
 	ierr = MatCreate(PETSC_COMM_WORLD, &matrix_handle);  CHKERRQ(ierr);
-	ierr = MatSetSizes(matrix_handle, PETSC_DECIDE, PETSC_DECIDE, max_M, max_N);  CHKERRQ(ierr);
+	ierr = MatSetSizes(matrix_handle, PETSC_DECIDE, PETSC_DECIDE, max_M+1, max_N+1);  CHKERRQ(ierr);
 	ierr = MatSetFromOptions(matrix_handle);  CHKERRQ(ierr);
 	ierr = MatSetUp(matrix_handle);  CHKERRQ(ierr);
 
-	//Go back to the beginning of our file
-	infile.seekg(std::ios::beg);
+	//Hack to reset our file
+	infile.close();
+	infile.open(filename.c_str(), std::ifstream::in);
+
+	//Fetch the first line
+	infile.getline(current_line, 256);
 
 	//Read through again
 	while(infile.good())
 	{
-		//Fetch a line
-		infile.getline(current_line, 256);
 
 		//If it isn't a comment
 		if(current_line[0] != '#')
@@ -102,15 +107,21 @@ int read_matrix(std::string filename, Mat matrix_handle)
 			token = strtok(NULL, " \n");
 			element[0] = atof(token);
 
+			//Debugging...
+			//std::cout << "ELEMENT[" << M[0] << "," << N[0] << "]=" << element[0] << std::endl;
+
 			//Insert it into the matrix
 			ierr = MatSetValues(matrix_handle, 1, M, 1, N, element, INSERT_VALUES);  CHKERRQ(ierr);
 		}
+
+		//Fetch another line
+		infile.getline(current_line, 256);
 	}
 
 	//Finish assembling our matrix
 	ierr = MatAssemblyBegin(matrix_handle, MAT_FINAL_ASSEMBLY);  CHKERRQ(ierr);
 	ierr = MatAssemblyEnd(matrix_handle, MAT_FINAL_ASSEMBLY);  CHKERRQ(ierr);
-	
+
 	//Close our file
 	infile.close();
 
